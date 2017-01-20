@@ -29,6 +29,8 @@ import re
 import json
 import requests
 
+from .errors import OneSignalError
+
 
 BASE_URL = 'https://onesignal.com/api/'
 
@@ -526,7 +528,7 @@ class OneSignalSdk(object):
         return send_request(url, headers=headers, method='POST')
 
     def create_notification(self, contents=None, heading='', url='',
-                            included_segments=('All',), app_id=None, player_ids=None, **kwargs):
+                            included_segments=None, filters=None, app_id=None, player_ids=None, **kwargs):
         """
         Creates a notification by sending a notification to https://onesignal.com/api/v1/notifications
         :param heading: push notification heading / title
@@ -535,7 +537,8 @@ class OneSignalSdk(object):
         :param app_id: App's ID
         :param contents: Contents of the message
         :param player_ids: list of player_ids to whom we specifically want to send notifications
-        :param included_segments: segments to be included to send push notification
+        :param included_segments: segments to be included to send push notification (only used if `player_ids` not passed)
+        :param filters: filters are another way to target specific users with notifications (only used if `included_segments` and `player_ids` not passed)
         :param kwargs: There can be more arguments as given on
         https://documentation.onesignal.com/docs/notifications-create-notification
         :return: Returns a HTTP response object which, per docs, will contain response like:
@@ -565,8 +568,12 @@ class OneSignalSdk(object):
 
         if player_ids and isinstance(player_ids, (list, tuple)):
             data['include_player_ids'] = player_ids
-        elif isinstance(included_segments, (list, tuple)) and len(included_segments):
+        elif isinstance(included_segments, (list, tuple)) and len(included_segments) > 0:
             data['included_segments'] = included_segments
+        elif isinstance(filters, (list, tuple)) and len(filters) > 0:
+            data['filters'] = filters
+        else:
+            raise OneSignalError('Must use "player_ids", "included_segments" or "filters" to target devices')
 
         if kwargs:
             data.update(kwargs)
